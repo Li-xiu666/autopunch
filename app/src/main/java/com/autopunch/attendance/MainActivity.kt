@@ -15,6 +15,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.autopunch.attendance.config.Prefs
+import com.autopunch.attendance.config.TargetResolver
 import com.autopunch.attendance.databinding.ActivityMainBinding
 import com.autopunch.attendance.log.PunchLog
 import com.autopunch.attendance.mail.MailSender
@@ -110,7 +111,7 @@ class MainActivity : AppCompatActivity() {
         Prefs.setToEmail(this, binding.etToEmail.text.toString())
 
         if (Prefs.getTargetPackage(this).isEmpty()) {
-            toast("请填写目标App包名")
+            toast("请填写考勤应用名称或包名")
             return
         }
         if (!PunchScheduler.canScheduleExact(this)) {
@@ -118,7 +119,15 @@ class MainActivity : AppCompatActivity() {
         }
         PunchScheduler.schedule(this)
         refreshNext()
-        toast("已保存并调度下一次打卡")
+        val resolved = TargetResolver.resolve(this)
+        binding.tvStatus.text = when {
+            resolved != null -> "已识别应用: $resolved"
+            else -> "⚠️ 未识别到「${Prefs.getTargetPackage(this)}」，请核对名称或改用包名"
+        }
+        toast(
+            if (resolved != null) "已保存并调度下一次打卡"
+            else "已保存，但未识别到该应用"
+        )
     }
 
     private fun onTestPunch() {

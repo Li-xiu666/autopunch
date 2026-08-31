@@ -9,6 +9,7 @@ import android.provider.Settings
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import com.autopunch.attendance.config.Prefs
+import com.autopunch.attendance.config.TargetResolver
 import com.autopunch.attendance.log.PunchLog
 import com.autopunch.attendance.mail.MailSender
 import kotlinx.coroutines.CoroutineScope
@@ -65,14 +66,14 @@ class PunchService : AccessibilityService() {
     }
 
     private fun startPunch(test: Boolean) {
-        val pkg = Prefs.getTargetPackage(this).trim()
-        if (pkg.isEmpty()) {
-            fail("#0", "未配置目标App包名")
+        val pkg = TargetResolver.resolve(this)
+        if (pkg == null) {
+            fail("#target", "无法识别目标App(${Prefs.getTargetPackage(this)})，请检查应用名称")
             return
         }
         PunchLog.append(
             this,
-            "[Punch] 开始 ${if (test) "测试" else "计划"}打卡: app=$pkg keywords=${Prefs.getKeywords(this)}"
+            "[Punch] 开始 ${if (test) "测试" else "计划"}打卡: app=$pkg (${Prefs.getTargetPackage(this)}) keywords=${Prefs.getKeywords(this)}"
         )
         WakeUpUtils.holdScreen(this)
         val t = PunchTask(
@@ -156,7 +157,7 @@ class PunchService : AccessibilityService() {
     }
 
     private fun relaunchApp() {
-        val pkg = Prefs.getTargetPackage(this).trim()
+        val pkg = TargetResolver.resolve(this) ?: return
         runCatching {
             val launch = packageManager.getLaunchIntentForPackage(pkg)
             if (launch != null) {

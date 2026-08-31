@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import com.autopunch.attendance.config.Prefs
+import com.autopunch.attendance.config.TargetResolver
 import com.autopunch.attendance.log.PunchLog
 import com.autopunch.attendance.service.PunchService
 import com.autopunch.attendance.service.WakeUpUtils
@@ -56,9 +57,10 @@ class UnlockActivity : Activity() {
     private fun proceed() {
         WakeUpUtils.holdScreen(applicationContext)
         val test = intent.getBooleanExtra(EXTRA_TEST, false)
-        val pkg = Prefs.getTargetPackage(this).trim()
-        if (pkg.isEmpty()) {
-            failUnlock("未配置目标App包名")
+        val pkg = TargetResolver.resolve(this)
+        if (pkg == null) {
+            PunchLog.append(this, "[Unlock] 未识别到目标App: ${Prefs.getTargetPackage(this)}")
+            failUnlock("未识别到目标App(${Prefs.getTargetPackage(this)})，请确认应用名称或改用包名")
             return
         }
         runCatching {

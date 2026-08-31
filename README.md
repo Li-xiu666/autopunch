@@ -116,7 +116,7 @@ button.performAction(AccessibilityNodeInfo.ACTION_CLICK)
 1. 用 **Android Studio** 打开本目录（要求 JDK 17+，AGP 8.2.2 会自动下载 Gradle 8.4）。首次 Sync 后即可 Build APK。
    - `local.properties` 里写好 `sdk.dir`，或让 Android Studio 自动配置。
 2. 安装到备用机。**首次使用必须完成 4 件事**：
-   1. 打开 App → 填「打卡时间 / 目标 App 包名 / 关键词 / 邮箱信息」→ 点「保存并调度」；
+   1. 打开 App → 填「打卡时间 / 目标考勤应用（填应用名称如“钉钉”，也可直接填包名如 `com.alibaba.android.rimet`）/ 关键词 / 邮箱信息」→ 点「保存并调度」——保存后底部会显示识别到的包名，未识别会提示你核对；
    2. 点「无障碍设置」开启「自动打卡助手」；
    3. 点「电池白名单」放行（MIUI 还要在系统「省电策略」里选「无限制」；华为请把 App 加入应用市场「自启动」，并在「电量-应用启动管理」关闭自动管理）；
    4. Android 12+ 按弹窗授予「闹钟和提醒」权限。
@@ -138,6 +138,7 @@ button.performAction(AccessibilityNodeInfo.ACTION_CLICK)
 |---|---|
 | `Schedule/PunchScheduler.kt` | 抖动计算、AlarmManager 调度 |
 | `Schedule/BootReceiver.kt` | 开机重建闹钟、窗口期内补打卡 |
+| `config/TargetResolver.kt` | 应用名称→包名解析（支持按名称或包名匹配目标 App） |
 | `UnlockActivity.kt` | 亮屏解锁、拉起目标 App |
 | `service/PunchService.kt` | 无障碍执行引擎（点击 / 重试 / 判定成功） |
 | `service/NodeFinder.kt` | 控件树遍历、可点击最近祖先查找 |

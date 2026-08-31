@@ -56,7 +56,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
-            android:text="目标考勤 App 包名"
+            android:text="目标考勤应用（填名称或包名均可）"
             android:textStyle="bold"
             android:textSize="15sp" />
 
@@ -65,7 +65,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:hint="例如 com.alibaba.android.rimet (钉钉)"
+            android:hint="例如 钉钉 ／ 也可填包名 com.alibaba.android.rimet"
             android:inputType="text" />
 
         <TextView
