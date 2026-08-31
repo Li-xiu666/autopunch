@@ -73,7 +73,7 @@ data class AppEntry(val label: String, val packageName: String) {
 
 private class AppListAdapter(
     context: Context,
-    items: List<AppEntry>
+    val items: List<AppEntry>
 ) : ArrayAdapter<AppEntry>(context, android.R.layout.simple_list_item_2, 0, items) {
 
     override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
