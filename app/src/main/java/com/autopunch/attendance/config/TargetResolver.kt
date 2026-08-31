@@ -34,10 +34,12 @@ object TargetResolver {
 
     private fun allApps(context: Context): List<Match> {
         val pm = context.packageManager
-        return pm.getInstalledApplications(0).mapNotNull { app ->
-            val label = runCatching { pm.getApplicationLabel(app).toString() }.getOrNull()
-            Match(app.packageName, label)
-        }.sortedBy { it.label }
+        return runCatching {
+            pm.getInstalledApplications(0).mapNotNull { app ->
+                val label = runCatching { pm.getApplicationLabel(app).toString() }.getOrNull()
+                Match(app.packageName, label)
+            }.sortedBy { it.label }
+        }.getOrDefault(emptyList())
     }
 
     fun looksLikePackage(name: String): Boolean =
