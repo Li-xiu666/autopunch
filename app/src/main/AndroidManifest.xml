@@ -36,6 +36,11 @@
             android:taskAffinity="com.autopunch.attendance.unlock"
             android:theme="@style/Theme.AutoPunch.Transparent" />
 
+        <activity
+            android:name=".AppPickerActivity"
+            android:exported="false"
+            android:label="选择考勤应用" />
+
         <service
             android:name=".service.KeepAliveService"
             android:exported="false"

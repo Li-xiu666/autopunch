@@ -60,13 +60,31 @@
             android:textStyle="bold"
             android:textSize="15sp" />
 
-        <EditText
-            android:id="@+id/etPackage"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:hint="例如 钉钉 ／ 也可填包名 com.alibaba.android.rimet"
-            android:inputType="text" />
+            android:orientation="horizontal">
+
+            <EditText
+                android:id="@+id/etPackage"
+                android:layout_width="0dp"
+                android:layout_weight="1"
+                android:layout_height="wrap_content"
+                android:hint="例如 钉钉 ／ 也可填包名"
+                android:inputType="text" />
+
+            <Space
+                android:layout_width="8dp"
+                android:layout_height="1dp" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnPickApp"
+                style="@style/Widget.Material3.Button.TonalButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="选择应用" />
+        </LinearLayout>
 
         <TextView
             android:layout_width="wrap_content"

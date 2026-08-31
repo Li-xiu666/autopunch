@@ -1,6 +1,7 @@
 package com.autopunch.attendance
 
 import android.Manifest
+import android.app.Activity.RESULT_OK
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -39,6 +40,22 @@ class MainActivity : AppCompatActivity() {
 
     private val exactAlarmPermission =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { refreshNext() }
+
+    private val pickApp =
+        registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+            if (r.resultCode == RESULT_OK) {
+                val pkg = r.data?.getStringExtra(AppPickerActivity.EXTRA_PACKAGE)
+                val label = r.data?.getStringExtra(AppPickerActivity.EXTRA_LABEL)
+                if (!pkg.isNullOrEmpty()) {
+                    Prefs.setTargetPackage(this, pkg)
+                    binding.etPackage.setText(pkg)
+                    PunchScheduler.schedule(this)
+                    refreshNext()
+                    binding.tvStatus.text = "已选择: $label ($pkg)"
+                    toast("目标应用已设置")
+                }
+            }
+        }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +110,11 @@ class MainActivity : AppCompatActivity() {
     private fun bindActions() {
         binding.btnSaveSchedule.setOnClickListener { saveAndSchedule() }
         binding.btnTest.setOnClickListener { onTestPunch() }
+        binding.btnPickApp.setOnClickListener {
+            runCatching {
+                pickApp.launch(Intent(this, AppPickerActivity::class.java))
+            }
+        }
         binding.btnAccessibility.setOnClickListener { openAccessibilitySettings() }
         binding.btnBattery.setOnClickListener { openBatterySettings() }
         binding.btnLog.setOnClickListener { showLog() }
@@ -119,19 +141,50 @@ class MainActivity : AppCompatActivity() {
         }
         PunchScheduler.schedule(this)
         refreshNext()
-        val resolved = TargetResolver.resolve(this)
-        binding.tvStatus.text = when {
-            resolved != null -> "已识别应用: $resolved"
-            else -> "⚠️ 未识别到「${Prefs.getTargetPackage(this)}」，请核对名称或改用包名"
+        val m = TargetResolver.resolveMatch(this)
+        if (m != null) {
+            binding.tvStatus.text = "已识别应用: ${m.label ?: m.packageName} (${m.packageName})"
+            toast("已保存并调度下一次打卡")
+        } else {
+            val raw = Prefs.getTargetPackage(this)
+            binding.tvStatus.text = "⚠️ 未识别到「$raw」"
+            toast("未识别到该应用，请在相似列表中选择")
+            showCandidateDialog(raw)
         }
-        toast(
-            if (resolved != null) "已保存并调度下一次打卡"
-            else "已保存，但未识别到该应用"
-        )
+    }
+
+    private fun showCandidateDialog(query: String) {
+        val candidates = TargetResolver.searchCandidates(this, query)
+        if (candidates.isEmpty()) {
+            AlertDialog.Builder(this)
+                .setTitle("未找到相似应用")
+                .setMessage("手机上没有名称或包名包含「$query」的应用。\n请用「选择应用」按钮从已安装应用列表直接挑选。")
+                .setPositiveButton("知道了", null)
+                .show()
+            return
+        }
+        val items = candidates.map { "${it.label ?: it.packageName} (${it.packageName})" }.toTypedArray()
+        AlertDialog.Builder(this)
+            .setTitle("请选择要打卡的应用")
+            .setItems(items) { _, which ->
+                val m = candidates[which]
+                Prefs.setTargetPackage(this, m.packageName)
+                binding.etPackage.setText(m.packageName)
+                binding.tvStatus.text = "已选择: ${m.label} (${m.packageName})"
+                PunchScheduler.schedule(this)
+                refreshNext()
+                toast("目标应用已设置")
+            }
+            .setNegativeButton("取消", null)
+            .show()
     }
 
     private fun onTestPunch() {
         saveAndSchedule()
+        if (TargetResolver.resolve(this) == null) {
+            toast("目标应用未识别，请先选择应用")
+            return
+        }
         if (!isAccessibilityEnabled()) {
             toast("请先开启无障碍服务")
             openAccessibilitySettings()
