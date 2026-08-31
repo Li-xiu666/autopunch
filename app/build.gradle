@@ -35,6 +35,21 @@ android {
     buildFeatures {
         viewBinding true
     }
+
+    packaging {
+        resources {
+            excludes += [
+                    'META-INF/NOTICE.md',
+                    'META-INF/LICENSE.md',
+                    'META-INF/LICENSE',
+                    'META-INF/NOTICE',
+                    'META-INF/LICENSE.txt',
+                    'META-INF/NOTICE.txt',
+                    'META-INF/DEPENDENCIES.md',
+                    'META-INF/INDEX.LIST',
+            ]
+        }
+    }
 }
 
 dependencies {
