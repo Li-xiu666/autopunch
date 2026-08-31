@@ -87,7 +87,7 @@ private class AppListAdapter(
     override fun getFilter(): Filter = object : Filter() {
         override fun performFiltering(constraint: CharSequence?): FilterResults {
             val q = constraint?.toString()?.trim().orEmpty()
-            val all = entries.toList()
+            val all = items.toList()
             val results = FilterResults()
             results.values = if (q.isEmpty()) all
             else all.filter {
