@@ -68,7 +68,16 @@ class PunchService : AccessibilityService() {
     private fun startPunch(test: Boolean) {
         val pkg = TargetResolver.resolve(this)
         if (pkg == null) {
-            fail("#target", "无法识别目标App(${Prefs.getTargetPackage(this)})，请检查应用名称")
+            val raw = Prefs.getTargetPackage(this)
+            PunchLog.append(this, "[Punch] 无法识别目标App: $raw")
+            finishReport(
+                subject = "❌ 打卡失败 [#target]",
+                body = buildString {
+                    append("时间: ").append(nowStr()).append('\n')
+                    append("原因: ").append("无法识别目标App($raw)，请检查应用名称或改为包名").append('\n')
+                    append("类型: ").append(if (test) "测试" else "计划").append('\n')
+                }
+            )
             return
         }
         PunchLog.append(

@@ -29,7 +29,6 @@ object TargetResolver {
         for (app in apps) {
             val label = runCatching { pm.getApplicationLabel(app).toString() }.getOrNull() ?: continue
             if (label.equals(appName, ignoreCase = true)) return app.packageName
-            if (label == appName) return app.packageName
         }
         return null
     }

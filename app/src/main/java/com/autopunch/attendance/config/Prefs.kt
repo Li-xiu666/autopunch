@@ -7,7 +7,7 @@ object Prefs {
 
     private const val NAME = "autopunch_prefs"
 
-    const val DEFAULT_PACKAGE = "com.alibaba.android.rimet"
+    const val DEFAULT_PACKAGE = "钉钉"
     const val DEFAULT_KEYWORDS = "下班打卡,上班打卡,打卡,签到"
 
     private fun sp(c: Context): SharedPreferences =
