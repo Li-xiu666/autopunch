@@ -20,12 +20,13 @@ class BootReceiver : BroadcastReceiver() {
         KeepAliveService.start(context)
         PunchScheduler.schedule(context)
 
-        val scheduled = Prefs.getNextPunch(context)
         val now = System.currentTimeMillis()
-        val withinCatch = now >= scheduled && now <= scheduled + CATCH_WINDOW_MS
-        if (withinCatch) {
+        val lastPunch = PunchScheduler.lastPunchExactToday(Prefs.getPunchPoints(context), now)
+        if (lastPunch > 0 && now >= lastPunch && now <= lastPunch + CATCH_WINDOW_MS) {
             context.startActivity(
-                Intent(context, UnlockActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                Intent(context, UnlockActivity::class.java)
+                    .putExtra(PunchScheduler.EXTRA_EXPECTED, lastPunch)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             )
         }
     }

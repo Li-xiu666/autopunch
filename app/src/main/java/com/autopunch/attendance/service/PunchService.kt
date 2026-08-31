@@ -12,6 +12,7 @@ import com.autopunch.attendance.config.Prefs
 import com.autopunch.attendance.config.TargetResolver
 import com.autopunch.attendance.log.PunchLog
 import com.autopunch.attendance.mail.MailSender
+import com.autopunch.attendance.schedule.PunchScheduler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -43,11 +44,12 @@ class PunchService : AccessibilityService() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_TRIGGER) {
             val test = intent.getBooleanExtra(EXTRA_TEST, false)
+            val expected = intent.getLongExtra(EXTRA_EXPECTED, 0L)
             if (!isAccessibilityEnabled()) {
                 reportUnavailable()
                 return START_NOT_STICKY
             }
-            startPunch(test)
+            startPunch(test, expected)
         }
         return START_STICKY
     }
@@ -65,7 +67,7 @@ class PunchService : AccessibilityService() {
         }
     }
 
-    private fun startPunch(test: Boolean) {
+    private fun startPunch(test: Boolean, expectedMillis: Long) {
         val pkg = TargetResolver.resolve(this)
         if (pkg == null) {
             val raw = Prefs.getTargetPackage(this)
@@ -76,7 +78,8 @@ class PunchService : AccessibilityService() {
                     append("时间: ").append(nowStr()).append('\n')
                     append("原因: ").append("无法识别目标App($raw)，请检查应用名称或改为包名").append('\n')
                     append("类型: ").append(if (test) "测试" else "计划").append('\n')
-                }
+                },
+                advance = !test
             )
             return
         }
@@ -90,7 +93,7 @@ class PunchService : AccessibilityService() {
             keywords = Prefs.getKeywordsList(this),
             doneKeywords = listOf("打卡成功", "已打卡", "打卡完成", "考勤完成"),
             test = test,
-            timeWindowStart = Prefs.getNextPunch(this),
+            timeWindowStart = expectedMillis,
             deadline = System.currentTimeMillis() + TIMEOUT_MS
         )
         task = t
@@ -179,8 +182,8 @@ class PunchService : AccessibilityService() {
     private fun nowOutsideWindow(t: PunchTask): Boolean {
         val now = System.currentTimeMillis()
         if (t.timeWindowStart <= 0) return false
-        val earliest = t.timeWindowStart - 2 * 60 * 1000L
-        val latest = t.timeWindowStart + 10 * 60 * 1000L
+        val earliest = t.timeWindowStart - 5 * 60 * 1000L
+        val latest = t.timeWindowStart + 30 * 60 * 1000L
         return now < earliest || now > latest
     }
 
@@ -198,7 +201,8 @@ class PunchService : AccessibilityService() {
                 append("类型: ").append(if (t.test) "测试" else "计划").append('\n')
                 append("应用: ").append(t.targetPackage).append('\n')
                 append("当前页面采样: ").append(texts.ifEmpty { "(空)" }).append('\n')
-            }
+            },
+            advance = !t.test
         )
     }
 
@@ -214,7 +218,8 @@ class PunchService : AccessibilityService() {
                 append("时间: ").append(nowStr()).append('\n')
                 append("原因: ").append(reason).append('\n')
                 append("应用: ").append(Prefs.getTargetPackage(this@PunchService)).append('\n')
-            }
+            },
+            advance = !t.test
         )
     }
 
@@ -223,11 +228,16 @@ class PunchService : AccessibilityService() {
         failReport("无障碍服务未开启，打卡无法自动执行。请到 系统设置->无障碍->自动打卡助手 开启后重试。")
     }
 
-    private fun finishReport(subject: String, body: String) {
+    private fun finishReport(subject: String, body: String, advance: Boolean = false) {
         Prefs.setLastResult(this, "$subject\n$body")
         task = null
         WakeUpUtils.release()
         handler.removeCallbacks(loopRunnable)
+
+        if (advance) {
+            PunchLog.append(this, "[Punch] 已顺延，计算下一个打卡点")
+            PunchScheduler.onPunchCompleted(this)
+        }
 
         if (MailSender.isConfigured(this)) {
             scope.launch {
@@ -267,6 +277,7 @@ class PunchService : AccessibilityService() {
     companion object {
         const val ACTION_TRIGGER = "com.autopunch.attendance.TRIGGER"
         const val EXTRA_TEST = "extra_test"
+        const val EXTRA_EXPECTED = "extra_expected"
 
         private const val TIMEOUT_MS = 75_000L
         private const val MAX_LAUNCH_TRIES = 3
@@ -275,10 +286,11 @@ class PunchService : AccessibilityService() {
         private const val CLICK_COOL_DOWN_MS = 2_200L
         private const val RETRY_MS = 1_800L
 
-        fun start(context: Context, test: Boolean = false) {
+        fun start(context: Context, test: Boolean = false, expectedMillis: Long = 0L) {
             val i = Intent(context, PunchService::class.java)
                 .setAction(ACTION_TRIGGER)
                 .putExtra(EXTRA_TEST, test)
+                .putExtra(EXTRA_EXPECTED, expectedMillis)
             context.startService(i)
         }
     }

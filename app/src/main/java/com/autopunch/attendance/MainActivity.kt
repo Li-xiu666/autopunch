@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 
@@ -98,14 +99,30 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadPrefs() {
-        binding.etHour.setText(Prefs.getHour(this).toString())
-        binding.etMinute.setText(Prefs.getMinute(this).toString())
+        val points = Prefs.getPunchPoints(this)
+        for (i in 0 until 5) {
+            val p = points.getOrNull(i)
+            enableBoxes[i].isChecked = p != null
+            if (p != null) {
+                hourEdits[i].setText(p.first.toString())
+                minuteEdits[i].setText(p.second.toString())
+            } else {
+                hourEdits[i].setText("")
+                minuteEdits[i].setText("")
+            }
+        }
+        val sd = Prefs.getStartDate(this)
+        binding.tvStartDate.text = if (sd > 0) fmtDate(sd) else "未设置（立即生效）"
         binding.etPackage.setText(Prefs.getTargetPackage(this))
         binding.etKeywords.setText(Prefs.getKeywords(this))
         binding.etSmtpEmail.setText(Prefs.getSmtpEmail(this))
         binding.etSmtpCode.setText(Prefs.getSmtpCode(this))
         binding.etToEmail.setText(Prefs.getToEmail(this))
     }
+
+    private val hourEdits get() = arrayOf(binding.etHour1, binding.etHour2, binding.etHour3, binding.etHour4, binding.etHour5)
+    private val minuteEdits get() = arrayOf(binding.etMinute1, binding.etMinute2, binding.etMinute3, binding.etMinute4, binding.etMinute5)
+    private val enableBoxes get() = arrayOf(binding.cb1, binding.cb2, binding.cb3, binding.cb4, binding.cb5)
 
     private fun bindActions() {
         binding.btnSaveSchedule.setOnClickListener { saveAndSchedule() }
@@ -119,13 +136,50 @@ class MainActivity : AppCompatActivity() {
         binding.btnBattery.setOnClickListener { openBatterySettings() }
         binding.btnLog.setOnClickListener { showLog() }
         binding.btnTestMail.setOnClickListener { testMail() }
+        binding.btnPickDate.setOnClickListener { pickStartDate() }
+        binding.btnClearDate.setOnClickListener {
+            Prefs.setStartDate(this, 0L)
+            binding.tvStartDate.text = "未设置（立即生效）"
+            toast("已清除开始日期（下次保存后立即生效）")
+        }
+    }
+
+    private fun pickStartDate() {
+        val cal = Calendar.getInstance()
+        runCatching {
+            android.app.DatePickerDialog(
+                this,
+                { _, y, mo, d ->
+                    val c = Calendar.getInstance().apply {
+                        set(y, mo, d, 0, 0, 0)
+                        set(Calendar.MILLISECOND, 0)
+                    }
+                    Prefs.setStartDate(this@MainActivity, c.timeInMillis)
+                    binding.tvStartDate.text = fmtDate(c.timeInMillis)
+                    toast("已设置开始日期")
+                },
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH),
+                cal.get(Calendar.DAY_OF_MONTH)
+            ).show()
+        }
     }
 
     private fun saveAndSchedule() {
-        val hour = binding.etHour.text.toString().toIntOrNull() ?: 8
-        val minute = binding.etMinute.text.toString().toIntOrNull() ?: 55
-        Prefs.setHour(this, hour.coerceIn(0, 23))
-        Prefs.setMinute(this, minute.coerceIn(0, 59))
+        val points = ArrayList<Pair<Int, Int>>()
+        for (i in 0 until 5) {
+            if (!enableBoxes[i].isChecked) continue
+            val h = hourEdits[i].text.toString().toIntOrNull()
+            val m = minuteEdits[i].text.toString().toIntOrNull()
+            if (h != null && m != null) {
+                points.add(h.coerceIn(0, 23) to m.coerceIn(0, 59))
+            }
+        }
+        if (points.isEmpty()) {
+            toast("请至少勾选并填写一个打卡时间")
+            return
+        }
+        Prefs.setPunchPoints(this, points)
         Prefs.setTargetPackage(this, binding.etPackage.text.toString())
         Prefs.setKeywords(this, binding.etKeywords.text.toString())
         Prefs.setSmtpEmail(this, binding.etSmtpEmail.text.toString())
@@ -242,11 +296,18 @@ class MainActivity : AppCompatActivity() {
 
     private fun refreshNext() {
         val next = Prefs.getNextPunch(this)
+        val points = Prefs.getPunchPoints(this)
+        val pointsStr = if (points.isEmpty()) "未设置" else points.joinToString("  ") { "%02d:%02d".format(it.first, it.second) }
+        val startDate = Prefs.getStartDate(this)
+        val startStr = if (startDate > 0) "自 ${fmtDate(startDate)} 起" else "立即生效"
         val s = if (next > 0) ts(next) else "尚未调度"
-        binding.tvNext.text = "下一次打卡时刻: $s"
+        binding.tvNext.text = "打卡点(${points.size}): $pointsStr\n开始日期: $startStr\n下一次打卡时刻: $s"
         val last = Prefs.getLastResult(this)
         binding.tvStatus.text = if (last.isEmpty()) "" else "上次结果:\n$last"
     }
+
+    private fun fmtDate(millis: Long): String =
+        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date(millis))
 
     private fun isAccessibilityEnabled(): Boolean =
         runCatching {

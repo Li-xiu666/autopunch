@@ -11,6 +11,7 @@ import android.os.Looper
 import com.autopunch.attendance.config.Prefs
 import com.autopunch.attendance.config.TargetResolver
 import com.autopunch.attendance.log.PunchLog
+import com.autopunch.attendance.schedule.PunchScheduler
 import com.autopunch.attendance.service.PunchService
 import com.autopunch.attendance.service.WakeUpUtils
 
@@ -57,6 +58,7 @@ class UnlockActivity : Activity() {
     private fun proceed() {
         WakeUpUtils.holdScreen(applicationContext)
         val test = intent.getBooleanExtra(EXTRA_TEST, false)
+        val expected = intent.getLongExtra(PunchScheduler.EXTRA_EXPECTED, 0L)
         val pkg = TargetResolver.resolve(this)
         if (pkg == null) {
             PunchLog.append(this, "[Unlock] 未识别到目标App: ${Prefs.getTargetPackage(this)}")
@@ -72,7 +74,7 @@ class UnlockActivity : Activity() {
             }
             launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
             startActivity(launch)
-            PunchService.start(this, test = test)
+            PunchService.start(this, test = test, expectedMillis = expected)
         }.onFailure { e ->
             PunchLog.append(this, "[Unlock] 启动App失败: ${e.message}")
             failUnlock("启动目标App失败: ${e.message}，请检查是否已登录该App")

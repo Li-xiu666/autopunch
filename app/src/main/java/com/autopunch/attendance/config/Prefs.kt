@@ -13,11 +13,34 @@ object Prefs {
     private fun sp(c: Context): SharedPreferences =
         c.getSharedPreferences(NAME, Context.MODE_PRIVATE)
 
-    fun getHour(c: Context): Int = sp(c).getInt("hour", 8)
-    fun setHour(c: Context, v: Int) = sp(c).edit().putInt("hour", v.coerceIn(0, 23)).apply()
+    fun getPunchPoints(c: Context): List<Pair<Int, Int>> =
+        sp(c).getString("punch_points", "08:55").orEmpty()
+            .split(',', '，', '、', ';', '；')
+            .mapNotNull { seg ->
+                val parts = seg.trim().split(':')
+                val h = parts.getOrNull(0)?.toIntOrNull()
+                val m = parts.getOrNull(1)?.toIntOrNull()
+                if (h != null && m != null) h.coerceIn(0, 23) to m.coerceIn(0, 59) else null
+            }
+            .distinct()
 
-    fun getMinute(c: Context): Int = sp(c).getInt("minute", 55)
-    fun setMinute(c: Context, v: Int) = sp(c).edit().putInt("minute", v.coerceIn(0, 59)).apply()
+    fun setPunchPoints(c: Context, points: List<Pair<Int, Int>>) =
+        sp(c).edit().putString(
+            "punch_points",
+            points.distinct().joinToString(",") { "%02d:%02d".format(it.first, it.second) }
+        ).apply()
+
+    fun getStartDate(c: Context): Long = sp(c).getLong("start_date", 0L)
+    fun setStartDate(c: Context, millis: Long) =
+        sp(c).edit().putLong("start_date", millis).apply()
+
+    fun getScheduleDay(c: Context): Long = sp(c).getLong("schedule_day", 0L)
+    fun setScheduleDay(c: Context, millis: Long) =
+        sp(c).edit().putLong("schedule_day", millis).apply()
+
+    fun getScheduleIndex(c: Context): Int = sp(c).getInt("schedule_index", 0)
+    fun setScheduleIndex(c: Context, v: Int) =
+        sp(c).edit().putInt("schedule_index", v.coerceAtLeast(0)).apply()
 
     fun getTargetPackage(c: Context): String =
         sp(c).getString("target_package", DEFAULT_PACKAGE).orEmpty()
